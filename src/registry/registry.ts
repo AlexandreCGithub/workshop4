@@ -1,7 +1,6 @@
 import bodyParser from "body-parser";
 import express, { Request, Response } from "express";
 import { REGISTRY_PORT } from "../config";
-import axios from 'axios';
 
 export type Node = { nodeId: number; pubKey: string };
 
@@ -14,19 +13,19 @@ export type GetNodeRegistryBody = {
   nodes: Node[];
 };
 
-const registeredNodes: Node[] = [];
+
 
 export async function launchRegistry() {
   const _registry = express();
   _registry.use(express.json());
   _registry.use(bodyParser.json());
 
-  _registry.get("/status", (req, res) => {
+  _registry.get("/status", async (req, res) => {
     res.send('live');
   });
-
+	const registeredNodes: Node[] = [];
   // Route pour enregistrer un nœud
-  _registry.post("/registerNode", (req, res) => {
+  _registry.post("/registerNode", async (req, res) => {
     const { nodeId, pubKey } = req.body;
 
     // Validate request body
@@ -47,7 +46,7 @@ export async function launchRegistry() {
     return res.status(201).json({ message: 'Node registered successfully', node: newNode });
   });
 
-_registry.get("/getNodeRegistry", (req, res) => {
+_registry.get("/getNodeRegistry", async (req, res) => {
   const getNodeRegistryBody: GetNodeRegistryBody = {
     nodes: registeredNodes
   };

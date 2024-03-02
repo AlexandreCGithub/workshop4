@@ -163,35 +163,39 @@ export async function importSymKey(
 
 // Encrypt a message using a symmetric key
 export async function symEncrypt(
-  key: webcrypto.CryptoKey,
-  data: string
+    key: webcrypto.CryptoKey,
+    data: string
 ): Promise<string> {
-  const encodedData = new TextEncoder().encode(data);
+  const dataB = new TextEncoder().encode(data);
+  const iv = webcrypto.getRandomValues(new Uint8Array(16))
+
   const encryptedData = await webcrypto.subtle.encrypt(
-    {
-      name: "AES-CBC",
-      iv: new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-    },
-    key,
-    encodedData
+      {
+        name: "AES-CBC",
+        iv: iv,
+      },
+      key,
+      dataB
   );
-  return arrayBufferToBase64(encryptedData);
+  
+  return arrayBufferToBase64(new Uint8Array([...iv, ...new Uint8Array(encryptedData)]).buffer);
 }
 
 // Decrypt a message using a symmetric key
 export async function symDecrypt(
-  strKey: string,
-  encryptedData: string
+    strKey: string,
+    encryptedData: string
 ): Promise<string> {
   const key = await importSymKey(strKey);
-  const decodedData = base64ToArrayBuffer(encryptedData);
-  const decryptedData = await webcrypto.subtle.decrypt(
-    {
-      name: "AES-CBC",
-      iv: new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]),
-    },
-    key,
-    decodedData
+
+  const decryptedDataBuffer = await webcrypto.subtle.decrypt(
+      {
+        name: "AES-CBC",
+        iv: base64ToArrayBuffer(encryptedData).slice(0, 16),
+      },
+      key,
+      base64ToArrayBuffer(encryptedData).slice(16)
   );
-  return new TextDecoder().decode(decryptedData);
+
+  return new TextDecoder().decode(decryptedDataBuffer);
 }

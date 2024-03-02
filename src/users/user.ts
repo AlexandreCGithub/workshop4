@@ -4,7 +4,6 @@ import { BASE_ONION_ROUTER_PORT,REGISTRY_PORT,BASE_USER_PORT } from "../config";
 import { GetNodeRegistryBody } from "../../src/registry/registry";
 import { createRandomSymmetricKey,exportSymKey,symEncrypt,symDecrypt,importSymKey,importPubKey,rsaEncrypt } from '../crypto';
 import { webcrypto } from "crypto";
-import axios from 'axios';
 
 export type SendMessageBody = {
   message: string;
@@ -19,28 +18,27 @@ export async function user(userId: number) {
   _user.use(express.json());
   _user.use(bodyParser.json());
 
-_user.get("/getLastReceivedMessage", (req, res) => {
+_user.get("/getLastReceivedMessage", async (req, res) => {
 	//res.send(LastReceivedMessage);
     res.json({ result: LastReceivedMessage });
   });
 
-_user.get("/getlastSentMessage", (req, res) => {
+_user.get("/getlastSentMessage", async (req, res) => {
 	//res.send(lastSentMessage);
     res.json({ result: lastSentMessage });
   });
   
-_user.get("/getLastCircuit", (req, res) => {
+_user.get("/getLastCircuit", async (req, res) => {
     res.json({ result: lastCircuit });
 });
 
 
-  _user.get("/status", (req, res) => {
+  _user.get("/status", async (req, res) => {
     res.send('live');
   });
   
-  _user.post("/message", (req, res) => {
+  _user.post("/message", async (req, res) => {
     const { message } = req.body;
-	console.log(userId,' a recu', message);
     LastReceivedMessage = message; // Update LastReceivedMessage with the received message
     res.send("success");
   });
@@ -65,7 +63,7 @@ _user.post("/sendMessage", async (req, res) => {
         }
 
 		const randomNodes = randomIndices.map(index => nodes[index]);		
-		lastCircuit = nodes.map(u => u.nodeId);
+		lastCircuit = randomNodes.map(u => u.nodeId);
 		
 		const keys: string[] = [];
 		
@@ -74,11 +72,9 @@ _user.post("/sendMessage", async (req, res) => {
 		const str_key = await exportSymKey(key);
         keys.push(str_key);
     }
-	console.log(keys)
 	
 	//list of addresses: destination, last node, before-last node
 	const addresses_reverse: string[] = ["000000300".concat(destinationUserId.toString()), "000000".concat((4000+randomNodes[2].nodeId).toString()), "000000".concat((4000+randomNodes[1].nodeId).toString())];
-	console.log(addresses_reverse);
 	
 	
 	//element 0 of randomNodes is associated with element 0 of keys, etc.
@@ -87,11 +83,7 @@ _user.post("/sendMessage", async (req, res) => {
 		
 		for (let i = 2; i >= 0; i--) {
 		
-		console.log('\nOn chiffre:');
-        console.log(randomNodes[i].nodeId);
-		
 		let address_and_message: string = addresses_reverse[2-i].concat(text);
-		console.log(address_and_message);
 		//Il faut encrypter avec la symetric key du node
 		
 		const sym_key_ex = await importSymKey(keys[i]);
@@ -99,7 +91,6 @@ _user.post("/sendMessage", async (req, res) => {
 		
 		const senc2 = await rsaEncrypt(keys[i],randomNodes[i].pubKey);
 		
-		console.log('et: ',senc2.length,'\n');
 		const s_total = senc2.concat(senc1);
 		
 		text = s_total
